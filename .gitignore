@@ -1,0 +1,16 @@
+.venv/
+.idea/
+__pycache__/
+*.py[cod]
+instance/
+*.db
+*.sqlite
+*.sqlite3
+.env
+*.pem
+*.key
+*.log
+*.xlsx
+.pytest_cache/
+.coverage
+htmlcov/

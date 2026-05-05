@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}用户管理{% endblock %}
+{% block page_title %}用户管理{% endblock %}
+{% block page_subtitle %}创建和停用系统账号，并按管理员、录入员、查看员分配权限。{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card content-card">
+      <div class="card-header content-card-header">
+        <div>
+          <div class="section-title">新增用户</div>
+          <div class="section-subtitle">新用户创建后即可登录</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <form method="post" class="row g-3">
+          <div class="col-12">
+            <label class="form-label">用户名</label>
+            <input class="form-control" name="username" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label">初始密码</label>
+            <input class="form-control" type="password" name="password" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label">角色</label>
+            <select class="form-select" name="role">
+              {% for role in roles %}
+              <option value="{{ role }}">{{ role_label(role) }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="is_active" id="user_is_active" checked>
+              <label class="form-check-label" for="user_is_active">启用账号</label>
+            </div>
+          </div>
+          <div class="col-12">
+            <button class="btn btn-dark w-100" type="submit">创建用户</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card content-card">
+      <div class="card-header content-card-header">
+        <div>
+          <div class="section-title">用户列表</div>
+          <div class="section-subtitle">停用账号后不能继续登录</div>
+        </div>
+      </div>
+      <div class="card-body table-responsive">
+        <table class="table table-hover align-middle">
+          <thead>
+            <tr>
+              <th>用户名</th>
+              <th>角色</th>
+              <th>状态</th>
+              <th>创建时间</th>
+              <th class="text-end">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user in users %}
+            <tr>
+              <td>{{ user.username }}</td>
+              <td>{{ role_label(user.role) }}</td>
+              <td>{{ '启用' if user.is_active else '停用' }}</td>
+              <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+              <td class="text-end">
+                <form method="post" action="{{ url_for('auth.reset_user_password', user_id=user.id) }}" class="d-inline-flex gap-1">
+                  <input class="form-control form-control-sm" type="password" name="password" placeholder="新密码">
+                  <button class="btn btn-sm btn-outline-secondary" type="submit">重置</button>
+                </form>
+                <form method="post" action="{{ url_for('auth.toggle_user', user_id=user.id) }}" class="d-inline">
+                  <button class="btn btn-sm btn-outline-danger" type="submit">{{ '停用' if user.is_active else '启用' }}</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="empty-state-cell">暂无用户。</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

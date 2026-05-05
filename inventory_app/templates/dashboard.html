@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}仪表盘{% endblock %}
+{% block page_title %}经营仪表盘{% endblock %}
+{% block page_subtitle %}按日期查看当日输入、输出、库存结余、预计毛利润和实际利润。{% endblock %}
+{% block hero_actions %}
+<form method="get" class="hero-inline-form">
+  <input class="form-control" type="date" name="biz_date" value="{{ metrics.biz_date }}">
+  <button class="btn btn-dark" type="submit">切换日期</button>
+</form>
+{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-2">
+    <div class="card metric-card h-100">
+      <div class="card-body">
+        <div class="metric-label">当日输入</div>
+        <div class="metric-value">{{ metrics.total_inbound_qty|decimal(3) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2">
+    <div class="card metric-card h-100">
+      <div class="card-body">
+        <div class="metric-label">当日输出</div>
+        <div class="metric-value">{{ metrics.total_output_qty|decimal(3) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2">
+    <div class="card metric-card h-100">
+      <div class="card-body">
+        <div class="metric-label">期末库存</div>
+        <div class="metric-value">{{ metrics.total_closing_balance|decimal(3) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2">
+    <div class="card metric-card h-100">
+      <div class="card-body">
+        <div class="metric-label">预计毛利润</div>
+        <div class="metric-value">{{ metrics.estimated_profit|decimal }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2">
+    <div class="card metric-card h-100">
+      <div class="card-body">
+        <div class="metric-label">赔偿亏损</div>
+        <div class="metric-value">{{ metrics.total_compensation|decimal }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2">
+    <div class="card metric-card h-100 metric-card-accent">
+      <div class="card-body">
+        <div class="metric-label">实际利润</div>
+        <div class="metric-value">{{ metrics.actual_profit|decimal }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card content-card h-100">
+      <div class="card-header content-card-header">
+        <div>
+          <div class="section-title">最近流水</div>
+          <div class="section-subtitle">最近录入的输入与输出记录</div>
+        </div>
+      </div>
+      <div class="card-body table-responsive">
+        <table class="table table-hover align-middle">
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>商品</th>
+              <th>类型</th>
+              <th>数量</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in metrics.recent_movements %}
+            <tr>
+              <td>{{ item.biz_date }}</td>
+              <td>{{ item.product.name }}</td>
+              <td>
+                <span class="table-pill {{ 'pill-in' if item.movement_type == 'INBOUND' else 'pill-out' }}">
+                  {{ '输入' if item.movement_type == 'INBOUND' else '输出' }}
+                </span>
+              </td>
+              <td>{{ item.quantity|decimal(3) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="empty-state-cell">暂无流水记录</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card content-card h-100">
+      <div class="card-header content-card-header">
+        <div>
+          <div class="section-title">最近亏损</div>
+          <div class="section-subtitle">启用商品数：{{ metrics.active_product_count }}</div>
+        </div>
+      </div>
+      <div class="card-body table-responsive">
+        <table class="table table-hover align-middle">
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>商品</th>
+              <th>坏货数量</th>
+              <th>赔偿金额</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in metrics.recent_losses %}
+            <tr>
+              <td>{{ item.biz_date }}</td>
+              <td>{{ item.product.name if item.product else '日期总亏损' }}</td>
+              <td>{{ item.loss_quantity|decimal(3) if item.loss_quantity is not none else '-' }}</td>
+              <td>{{ item.compensation_amount|decimal }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="empty-state-cell">暂无亏损记录</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

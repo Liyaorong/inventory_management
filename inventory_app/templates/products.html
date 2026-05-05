@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}商品管理{% endblock %}
+{% block page_title %}商品管理{% endblock %}
+{% block page_subtitle %}维护商品名称、类别、单位、默认毛利润，并支持 Excel 导入导出。{% endblock %}
+{% block hero_actions %}
+{% if current_user.role == ROLE_ADMIN %}
+<div class="hero-button-group">
+  <a class="btn btn-outline-dark" href="{{ url_for('main.products_template') }}">下载导入模板</a>
+  <a class="btn btn-dark" href="{{ url_for('main.products_export') }}">导出商品</a>
+</div>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="row g-4">
+  {% if current_user.role == ROLE_ADMIN %}
+  <div class="col-lg-4">
+    <div class="card content-card h-100">
+      <div class="card-header content-card-header">
+        <div>
+          <div class="section-title">新增商品</div>
+          <div class="section-subtitle">录入基础主数据</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <form method="post" class="row g-3">
+          <div class="col-12">
+            <label class="form-label">商品名称</label>
+            <input class="form-control" name="name" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">商品类别</label>
+            <input class="form-control" name="category" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">单位</label>
+            <input class="form-control" name="unit" required>
+            <div class="form-text">填写数量单位，例如 件、个、箱、袋、KG。像 2000/盘 这类规格不要填在这里。</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label">默认单件毛利润</label>
+            <input class="form-control" name="default_profit_per_unit" type="number" min="0" step="0.01" required>
+          </div>
+          <div class="col-12">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="is_active" id="is_active" checked>
+              <label class="form-check-label" for="is_active">启用商品</label>
+            </div>
+          </div>
+          <div class="col-12">
+            <button class="btn btn-dark w-100" type="submit">保存商品</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+  <div class="col-lg-{{ 8 if current_user.role == ROLE_ADMIN else 12 }}">
+    <div class="card content-card">
+      <div class="card-header content-card-header">
+        <div>
+          <div class="section-title">商品列表</div>
+          <div class="section-subtitle">支持手动维护与 Excel 批量导入</div>
+        </div>
+        {% if current_user.role == ROLE_ADMIN %}<form method="post" action="{{ url_for('main.products_import') }}" enctype="multipart/form-data" class="toolbar-form">
+          <input class="form-control form-control-sm" type="file" name="file" accept=".xlsx,.xls" required>
+          <button class="btn btn-sm btn-outline-dark" type="submit">导入 Excel</button>
+        </form>{% endif %}
+      </div>
+      <div class="card-body table-responsive">
+        <table class="table table-hover align-middle">
+          <thead>
+            <tr>
+              <th>名称</th>
+              <th>类别</th>
+              <th>单位</th>
+              <th>默认毛利润</th>
+              <th>状态</th>
+              {% if current_user.role == ROLE_ADMIN %}<th class="text-end">操作</th>{% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for product in products %}
+            <tr>
+              <td>{{ product.name }}</td>
+              <td>{{ product.category }}</td>
+              <td>{{ product.unit }}</td>
+              <td>{{ product.default_profit_per_unit|decimal }}</td>
+              <td>
+                <span class="table-pill {{ 'pill-in' if product.is_active else 'pill-muted' }}">
+                  {{ '启用' if product.is_active else '停用' }}
+                </span>
+              </td>
+              {% if current_user.role == ROLE_ADMIN %}<td class="text-end">
+                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('main.edit_product', product_id=product.id) }}">编辑</a>
+                <form method="post" action="{{ url_for('main.toggle_product', product_id=product.id) }}" class="d-inline">
+                  <button class="btn btn-sm btn-outline-secondary" type="submit">{{ '停用' if product.is_active else '启用' }}</button>
+                </form>
+                <form method="post" action="{{ url_for('main.delete_product', product_id=product.id) }}" class="d-inline">
+                  <button class="btn btn-sm btn-outline-danger" type="submit">删除</button>
+                </form>
+              </td>{% endif %}
+            </tr>
+            {% else %}
+            <tr><td colspan="{{ 6 if current_user.role == ROLE_ADMIN else 5 }}" class="empty-state-cell">暂无商品，请先新增或导入。</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

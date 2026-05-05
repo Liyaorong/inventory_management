@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}登录{% endblock %}
+{% block page_title %}登录{% endblock %}
+{% block page_subtitle %}请输入账号和密码后继续使用系统。{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5">
+    <div class="card content-card">
+      <div class="card-body">
+        <form method="post" class="row g-3">
+          <div class="col-12">
+            <label class="form-label">用户名</label>
+            <input class="form-control" name="username" autocomplete="username" required autofocus>
+          </div>
+          <div class="col-12">
+            <label class="form-label">密码</label>
+            <input class="form-control" type="password" name="password" autocomplete="current-password" required>
+          </div>
+          <div class="col-12">
+            <button class="btn btn-dark w-100" type="submit">登录</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

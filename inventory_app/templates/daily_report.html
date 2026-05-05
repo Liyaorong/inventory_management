@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}日报查询{% endblock %}
+{% block page_title %}日报查询{% endblock %}
+{% block page_subtitle %}按日期范围、商品和类别筛选，并导出日报和商品明细。{% endblock %}
+{% block hero_actions %}
+<a class="btn btn-dark" href="{{ url_for('main.daily_report', start_date=start_date, end_date=end_date, product_id=selected_product_id, category=selected_category, format='xlsx') }}">导出日报</a>
+{% endblock %}
+{% block content %}
+<div class="card content-card mb-4">
+  <div class="card-header content-card-header">
+    <div>
+      <div class="section-title">筛选条件</div>
+      <div class="section-subtitle">支持按日期范围、商品、类别联合筛选</div>
+    </div>
+  </div>
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label">开始日期</label>
+        <input class="form-control" type="date" name="start_date" value="{{ start_date }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">结束日期</label>
+        <input class="form-control" type="date" name="end_date" value="{{ end_date }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">商品</label>
+        <select class="form-select" name="product_id">
+          <option value="">全部商品</option>
+          {% for product in products %}
+          <option value="{{ product.id }}" {% if selected_product_id == product.id %}selected{% endif %}>{{ product.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">类别</label>
+        <select class="form-select" name="category">
+          <option value="">全部类别</option>
+          {% for category in categories %}
+          <option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>{{ category }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12">
+        <button class="btn btn-dark" type="submit">查询</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card content-card mb-4">
+  <div class="card-header content-card-header">
+    <div>
+      <div class="section-title">每日汇总</div>
+      <div class="section-subtitle">按天汇总输入、输出、库存、赔偿与实际利润</div>
+    </div>
+  </div>
+  <div class="card-body table-responsive">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th>日期</th>
+          <th>输入</th>
+          <th>输出</th>
+          <th>不良品</th>
+          <th>杂料</th>
+          <th>来料少数</th>
+          <th>来料多数</th>
+          <th>坏货数量</th>
+          <th>期末库存</th>
+          <th>预计毛利润</th>
+          <th>商品赔偿</th>
+          <th>日期总亏损</th>
+          <th>实际利润</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in summary_rows %}
+        <tr>
+          <td>{{ row.biz_date }}</td>
+          <td>{{ row.total_inbound_qty|decimal(3) }}</td>
+          <td>{{ row.total_output_qty|decimal(3) }}</td>
+          <td>{{ row.total_defective_qty|decimal(0) }}</td>
+          <td>{{ row.total_misc_qty|decimal(0) }}</td>
+          <td>{{ row.total_incoming_short_qty|decimal(0) }}</td>
+          <td>{{ row.total_incoming_over_qty|decimal(0) }}</td>
+          <td>{{ row.total_loss_qty|decimal(3) }}</td>
+          <td>{{ row.total_closing_balance|decimal(3) }}</td>
+          <td>{{ row.estimated_profit|decimal }}</td>
+          <td>{{ row.product_loss_compensation|decimal }}</td>
+          <td>{{ row.global_loss_compensation|decimal }}</td>
+          <td>{{ row.actual_profit|decimal }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="13" class="empty-state-cell">没有符合条件的数据。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card content-card">
+  <div class="card-header content-card-header">
+    <div>
+      <div class="section-title">商品明细</div>
+      <div class="section-subtitle">逐商品查看期初、输入、输出、坏货、未出货与利润</div>
+    </div>
+  </div>
+  <div class="card-body table-responsive">
+    <table class="table table-hover table-sm align-middle">
+      <thead>
+        <tr>
+          <th>日期</th>
+          <th>商品</th>
+          <th>类别</th>
+          <th>期初</th>
+          <th>输入</th>
+          <th>输出</th>
+          <th>不良品</th>
+          <th>杂料</th>
+          <th>来料少数</th>
+          <th>来料多数</th>
+          <th>坏货</th>
+          <th>未出货</th>
+          <th>预计毛利润</th>
+          <th>商品赔偿</th>
+          <th>扣商品赔偿后利润</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in detail_rows %}
+        <tr>
+          <td>{{ row.biz_date }}</td>
+          <td>{{ row.product_name }}</td>
+          <td>{{ row.category }}</td>
+          <td>{{ row.opening_balance|decimal(3) }}</td>
+          <td>{{ row.inbound_qty|decimal(3) }}</td>
+          <td>{{ row.output_qty|decimal(3) }}</td>
+          <td>{{ row.defective_qty|decimal(0) }}</td>
+          <td>{{ row.misc_qty|decimal(0) }}</td>
+          <td>{{ row.incoming_short_qty|decimal(0) }}</td>
+          <td>{{ row.incoming_over_qty|decimal(0) }}</td>
+          <td>{{ row.loss_qty|decimal(3) }}</td>
+          <td>{{ row.closing_balance|decimal(3) }}</td>
+          <td>{{ row.estimated_profit|decimal }}</td>
+          <td>{{ row.product_loss_compensation|decimal }}</td>
+          <td>{{ row.net_profit_after_product_loss|decimal }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="15" class="empty-state-cell">没有商品明细。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

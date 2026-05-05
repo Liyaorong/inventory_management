@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}每日录入{% endblock %}
+{% block page_title %}每日录入{% endblock %}
+{% block page_subtitle %}录入页分为每日进货和每日出货两段，出货支持填写当日毛利润覆盖值。{% endblock %}
+{% block hero_actions %}
+{% if current_user.role in [ROLE_ADMIN, ROLE_OPERATOR] %}
+<div class="hero-button-group">
+  <a class="btn btn-outline-dark" href="{{ url_for('main.entries_template') }}">下载流水模板</a>
+  <a class="btn btn-dark" href="{{ url_for('main.entries_export', biz_date=selected_date) }}">导出当日流水</a>
+</div>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card content-card mb-4">
+  <div class="card-header content-card-header">
+    <div>
+      <div class="section-title">日期与批量导入</div>
+      <div class="section-subtitle">先切换日期，再录入当天的进货和出货</div>
+    </div>
+    {% if current_user.role in [ROLE_ADMIN, ROLE_OPERATOR] %}<form method="post" action="{{ url_for('main.entries_import') }}" enctype="multipart/form-data" class="toolbar-form">
+      <input class="form-control form-control-sm" type="file" name="file" accept=".xlsx,.xls" required>
+      <button class="btn btn-sm btn-outline-dark" type="submit">导入 Excel</button>
+    </form>{% endif %}
+  </div>
+  <div class="card-body">
+    <form method="get" class="hero-inline-form">
+      <input class="form-control" type="date" name="biz_date" value="{{ selected_date }}">
+      <button class="btn btn-outline-dark" type="submit">切换日期</button>
+    </form>
+  </div>
+</div>
+
+<div class="card content-card mb-4">
+  <div class="card-header content-card-header">
+    <div>
+      <div class="section-title">每日进货</div>
+      <div class="section-subtitle">录入当天新增到库存的数量</div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="row g-4">
+      <div class="col-lg-4">
+        {% if current_user.role in [ROLE_ADMIN, ROLE_OPERATOR] %}<form method="post" class="row g-3">
+          <input type="hidden" name="movement_type" value="INBOUND">
+          <div class="col-12">
+            <label class="form-label">日期</label>
+            <input class="form-control" type="date" name="biz_date" value="{{ selected_date }}" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label">商品</label>
+            <select class="form-select" name="product_id" required>
+              <option value="">请选择商品</option>
+              {% for product in products %}
+              <option value="{{ product.id }}">{{ product.name }} / {{ product.category }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">进货数量</label>
+            <input class="form-control" type="number" name="quantity" min="0" step="0.001" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label">备注</label>
+            <textarea class="form-control" name="remark" rows="2"></textarea>
+          </div>
+          <div class="col-12">
+            <button class="btn btn-dark w-100" type="submit">保存进货</button>
+          </div>
+        </form>{% else %}<div class="empty-state-cell">当前账号只能查看记录。</div>{% endif %}
+      </div>
+      <div class="col-lg-8">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead>
+              <tr>
+                <th>商品</th>
+                <th>进货数量</th>
+                <th>备注</th>
+                {% if current_user.role == ROLE_ADMIN %}<th class="text-end">操作</th>{% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in inbound_entries %}
+              <tr>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.quantity|decimal(3) }}</td>
+                <td>{{ item.remark or '-' }}</td>
+                {% if current_user.role == ROLE_ADMIN %}<td class="text-end">
+                  <form method="post" action="{{ url_for('main.delete_entry', movement_id=item.id) }}" class="d-inline">
+                    <button class="btn btn-sm btn-outline-danger" type="submit">删除</button>
+                  </form>
+                </td>{% endif %}
+              </tr>
+              {% else %}
+              <tr><td colspan="{{ 4 if current_user.role == ROLE_ADMIN else 3 }}" class="empty-state-cell">该日期暂无进货记录。</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card content-card">
+  <div class="card-header content-card-header">
+    <div>
+      <div class="section-title">每日出货</div>
+      <div class="section-subtitle">录入当天发出的数量，可单独覆盖毛利润</div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="row g-4">
+      <div class="col-lg-4">
+        {% if current_user.role in [ROLE_ADMIN, ROLE_OPERATOR] %}<form method="post" class="row g-3">
+          <input type="hidden" name="movement_type" value="OUTPUT">
+          <div class="col-12">
+            <label class="form-label">日期</label>
+            <input class="form-control" type="date" name="biz_date" value="{{ selected_date }}" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label">商品</label>
+            <select class="form-select" name="product_id" required>
+              <option value="">请选择商品</option>
+              {% for product in products %}
+              <option value="{{ product.id }}">{{ product.name }} / {{ product.category }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">出货数量</label>
+            <input class="form-control" type="number" name="quantity" min="0" step="0.001" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label">毛利润单价覆盖</label>
+            <input class="form-control" type="number" name="profit_per_unit_override" min="0" step="0.01">
+            <div class="form-text">留空时使用商品默认毛利润。</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label">备注</label>
+            <textarea class="form-control" name="remark" rows="2"></textarea>
+          </div>
+          <div class="col-12">
+            <button class="btn btn-dark w-100" type="submit">保存出货</button>
+          </div>
+        </form>{% else %}<div class="empty-state-cell">当前账号只能查看记录。</div>{% endif %}
+      </div>
+      <div class="col-lg-8">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead>
+              <tr>
+                <th>商品</th>
+                <th>出货数量</th>
+                <th>毛利润覆盖</th>
+                <th>备注</th>
+                {% if current_user.role == ROLE_ADMIN %}<th class="text-end">操作</th>{% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in outbound_entries %}
+              <tr>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.quantity|decimal(3) }}</td>
+                <td>{{ item.profit_per_unit_override|decimal if item.profit_per_unit_override is not none else '-' }}</td>
+                <td>{{ item.remark or '-' }}</td>
+                {% if current_user.role == ROLE_ADMIN %}<td class="text-end">
+                  <form method="post" action="{{ url_for('main.delete_entry', movement_id=item.id) }}" class="d-inline">
+                    <button class="btn btn-sm btn-outline-danger" type="submit">删除</button>
+                  </form>
+                </td>{% endif %}
+              </tr>
+              {% else %}
+              <tr><td colspan="{{ 5 if current_user.role == ROLE_ADMIN else 4 }}" class="empty-state-cell">该日期暂无出货记录。</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

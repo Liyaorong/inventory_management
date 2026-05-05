@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+{% block title %}送货单{% endblock %}
+{% block page_title %}送货单录入{% endblock %}
+{% block page_subtitle %}录入顾客、联系人、送货日期、送货单号和多行明细。良品出货会计入输出，不良品、杂料、来料少数会计入损耗，来料多数会计入输入。{% endblock %}
+{% block content %}
+<div class="row g-4">
+  {% if current_user.role in [ROLE_ADMIN, ROLE_OPERATOR] %}
+  <div class="col-xl-5">
+    <div class="card content-card">
+      <div class="card-header content-card-header">
+        <div>
+          <div class="section-title">新增送货单</div>
+          <div class="section-subtitle">保存后会自动进入日报统计</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <form method="post" id="delivery-note-form" class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">顾客</label>
+            <input class="form-control" name="customer_name" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">联系人</label>
+            <input class="form-control" name="contact_person">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">送货日期</label>
+            <input class="form-control" type="date" name="delivery_date" value="{{ selected_date }}" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">送货单号</label>
+            <input class="form-control" name="delivery_no" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label">整单备注</label>
+            <textarea class="form-control" name="note_remark" rows="2"></textarea>
+          </div>
+
+          <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <label class="form-label mb-0">送货明细</label>
+              <button class="btn btn-sm btn-outline-dark" type="button" id="add-line-btn">新增一行</button>
+            </div>
+            <div class="form-text mb-3">良品出货数、不良品数、杂料、来料少数、来料多数按实际件数录入，只支持整数。</div>
+            <div class="delivery-lines" id="delivery-lines">
+              <div class="delivery-line" data-line-row>
+                <div class="row g-2">
+                  <div class="col-3">
+                    <label class="form-label">序号</label>
+                    <input class="form-control" name="serial_no[]">
+                  </div>
+                  <div class="col-4">
+                    <label class="form-label">批号</label>
+                    <input class="form-control" name="batch_no[]">
+                  </div>
+                  <div class="col-5">
+                    <label class="form-label">产品名称</label>
+                    <select class="form-select js-product-select" name="product_id[]">
+                      <option value="">请选择商品</option>
+                      {% for product in products %}
+                      <option value="{{ product.id }}" data-unit="{{ product.unit }}">{{ product.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-3">
+                    <label class="form-label">单位</label>
+                    <input class="form-control js-unit-input" name="unit[]" placeholder="自动带出">
+                  </div>
+                  <div class="col-3">
+                    <label class="form-label">良品出货数</label>
+                    <input class="form-control" type="number" name="good_qty[]" min="0" step="1" value="0">
+                  </div>
+                  <div class="col-3">
+                    <label class="form-label">不良品数</label>
+                    <input class="form-control" type="number" name="defective_qty[]" min="0" step="1" value="0">
+                  </div>
+                  <div class="col-3">
+                    <label class="form-label">杂料</label>
+                    <input class="form-control" type="number" name="misc_qty[]" min="0" step="1" value="0">
+                  </div>
+                  <div class="col-3">
+                    <label class="form-label">来料少数</label>
+                    <input class="form-control" type="number" name="incoming_short_qty[]" min="0" step="1" value="0">
+                  </div>
+                  <div class="col-3">
+                    <label class="form-label">来料多数</label>
+                    <input class="form-control" type="number" name="incoming_over_qty[]" min="0" step="1" value="0">
+                  </div>
+                  <div class="col-7">
+                    <label class="form-label">备注</label>
+                    <input class="form-control" name="line_remark[]">
+                  </div>
+                  <div class="col-2 d-flex align-items-end">
+                    <button class="btn btn-outline-danger w-100 js-remove-line" type="button">删除</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <button class="btn btn-dark w-100" type="submit">保存送货单</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+  <div class="col-xl-{{ 7 if current_user.role in [ROLE_ADMIN, ROLE_OPERATOR] else 12 }}">
+    <div class="card content-card">
+      <div class="card-header content-card-header">
+        <div>
+          <div class="section-title">最近送货单</div>
+          <div class="section-subtitle">最近 20 张，已按送货日期倒序排列</div>
+        </div>
+      </div>
+      <div class="card-body">
+        {% for note in notes %}
+        <div class="delivery-note-block">
+          <div class="delivery-note-head">
+            <div>
+              <div class="delivery-note-title">{{ note.delivery_no }}</div>
+              <div class="delivery-note-meta">
+                顾客：{{ note.customer_name }}
+                {% if note.contact_person %} / 联系人：{{ note.contact_person }}{% endif %}
+                / 日期：{{ note.delivery_date }}
+              </div>
+            </div>
+            {% if current_user.role == ROLE_ADMIN %}<form method="post" action="{{ url_for('main.delete_delivery_note', note_id=note.id) }}">
+              <button class="btn btn-sm btn-outline-danger" type="submit">删除</button>
+            </form>{% endif %}
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover table-sm align-middle">
+              <thead>
+                <tr>
+                  <th>序号</th>
+                  <th>批号</th>
+                  <th>产品名称</th>
+                  <th>单位</th>
+                  <th>良品出货数</th>
+                  <th>不良品数</th>
+                  <th>杂料</th>
+                  <th>来料少数</th>
+                  <th>来料多数</th>
+                  <th>备注</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for line in note.lines %}
+                <tr>
+                  <td>{{ line.serial_no or '-' }}</td>
+                  <td>{{ line.batch_no or '-' }}</td>
+                  <td>{{ line.product_name_snapshot }}</td>
+                  <td>{{ line.unit_snapshot }}</td>
+                  <td>{{ line.good_qty|decimal(0) }}</td>
+                  <td>{{ line.defective_qty|decimal(0) }}</td>
+                  <td>{{ line.misc_qty|decimal(0) }}</td>
+                  <td>{{ line.incoming_short_qty|decimal(0) }}</td>
+                  <td>{{ line.incoming_over_qty|decimal(0) }}</td>
+                  <td>{{ line.remark or '-' }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% if note.note_remark %}
+          <div class="delivery-note-remark">整单备注：{{ note.note_remark }}</div>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="empty-state-cell">暂无送货单，请先录入。</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<template id="delivery-line-template">
+  <div class="delivery-line" data-line-row>
+    <div class="row g-2">
+      <div class="col-3">
+        <label class="form-label">序号</label>
+        <input class="form-control" name="serial_no[]">
+      </div>
+      <div class="col-4">
+        <label class="form-label">批号</label>
+        <input class="form-control" name="batch_no[]">
+      </div>
+      <div class="col-5">
+        <label class="form-label">产品名称</label>
+        <select class="form-select js-product-select" name="product_id[]">
+          <option value="">请选择商品</option>
+          {% for product in products %}
+          <option value="{{ product.id }}" data-unit="{{ product.unit }}">{{ product.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-3">
+        <label class="form-label">单位</label>
+        <input class="form-control js-unit-input" name="unit[]" placeholder="自动带出">
+      </div>
+      <div class="col-3">
+        <label class="form-label">良品出货数</label>
+        <input class="form-control" type="number" name="good_qty[]" min="0" step="1" value="0">
+      </div>
+      <div class="col-3">
+        <label class="form-label">不良品数</label>
+        <input class="form-control" type="number" name="defective_qty[]" min="0" step="1" value="0">
+      </div>
+      <div class="col-3">
+        <label class="form-label">杂料</label>
+        <input class="form-control" type="number" name="misc_qty[]" min="0" step="1" value="0">
+      </div>
+      <div class="col-3">
+        <label class="form-label">来料少数</label>
+        <input class="form-control" type="number" name="incoming_short_qty[]" min="0" step="1" value="0">
+      </div>
+      <div class="col-3">
+        <label class="form-label">来料多数</label>
+        <input class="form-control" type="number" name="incoming_over_qty[]" min="0" step="1" value="0">
+      </div>
+      <div class="col-7">
+        <label class="form-label">备注</label>
+        <input class="form-control" name="line_remark[]">
+      </div>
+      <div class="col-2 d-flex align-items-end">
+        <button class="btn btn-outline-danger w-100 js-remove-line" type="button">删除</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+  const lineContainer = document.getElementById("delivery-lines");
+  const addLineBtn = document.getElementById("add-line-btn");
+  const lineTemplate = document.getElementById("delivery-line-template");
+
+  function bindLineRow(row) {
+    const select = row.querySelector(".js-product-select");
+    const unitInput = row.querySelector(".js-unit-input");
+    const removeBtn = row.querySelector(".js-remove-line");
+
+    if (select && unitInput) {
+      select.addEventListener("change", () => {
+        const selected = select.options[select.selectedIndex];
+        unitInput.value = selected?.dataset?.unit || "";
+      });
+    }
+
+    if (removeBtn) {
+      removeBtn.addEventListener("click", () => {
+        const rows = lineContainer.querySelectorAll("[data-line-row]");
+        if (rows.length === 1) {
+          row.querySelectorAll("input").forEach((input) => {
+            if (input.type === "number") {
+              input.value = "0";
+            } else {
+              input.value = "";
+            }
+          });
+          if (select) {
+            select.value = "";
+          }
+          return;
+        }
+        row.remove();
+      });
+    }
+  }
+
+  if (lineContainer && addLineBtn && lineTemplate) {
+    addLineBtn.addEventListener("click", () => {
+      const fragment = lineTemplate.content.cloneNode(true);
+      const row = fragment.querySelector("[data-line-row]");
+      bindLineRow(row);
+      lineContainer.appendChild(fragment);
+    });
+
+    lineContainer.querySelectorAll("[data-line-row]").forEach(bindLineRow);
+  }
+</script>
+{% endblock %}

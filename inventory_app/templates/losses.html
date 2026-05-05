@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}亏损录入{% endblock %}
+{% block page_title %}亏损录入{% endblock %}
+{% block page_subtitle %}支持商品级坏货赔偿和按日期补录的总亏损。{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card content-card h-100">
+      <div class="card-header content-card-header">
+        <div>
+          <div class="section-title">录入亏损</div>
+          <div class="section-subtitle">不关联商品时记为日期总亏损</div>
+        </div>
+      </div>
+      <div class="card-body">
+        {% if current_user.role in [ROLE_ADMIN, ROLE_OPERATOR] %}<form method="post" class="row g-3">
+          <div class="col-12">
+            <label class="form-label">日期</label>
+            <input class="form-control" type="date" name="biz_date" value="{{ selected_date }}" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label">商品</label>
+            <select class="form-select" name="product_id">
+              <option value="">不关联商品（日期总亏损）</option>
+              {% for product in products %}
+              <option value="{{ product.id }}">{{ product.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">坏货数量</label>
+            <input class="form-control" type="number" name="loss_quantity" min="0" step="0.001">
+          </div>
+          <div class="col-12">
+            <label class="form-label">赔偿金额</label>
+            <input class="form-control" type="number" name="compensation_amount" min="0" step="0.01" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label">备注</label>
+            <textarea class="form-control" name="remark" rows="2"></textarea>
+          </div>
+          <div class="col-12">
+            <button class="btn btn-dark w-100" type="submit">保存亏损</button>
+          </div>
+        </form>{% else %}<div class="empty-state-cell">当前账号只能查看记录。</div>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card content-card mb-4">
+      <div class="card-body">
+        <form method="get" class="hero-inline-form">
+          <input class="form-control" type="date" name="biz_date" value="{{ selected_date }}">
+          <button class="btn btn-outline-dark" type="submit">切换日期</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card content-card">
+      <div class="card-header content-card-header">
+        <div>
+          <div class="section-title">{{ selected_date }} 亏损明细</div>
+          <div class="section-subtitle">商品级赔偿和日期总亏损统一展示</div>
+        </div>
+      </div>
+      <div class="card-body table-responsive">
+        <table class="table table-hover align-middle">
+          <thead>
+            <tr>
+              <th>商品</th>
+              <th>坏货数量</th>
+              <th>赔偿金额</th>
+              <th>备注</th>
+              {% if current_user.role == ROLE_ADMIN %}<th class="text-end">操作</th>{% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in losses %}
+            <tr>
+              <td>{{ item.product.name if item.product else '日期总亏损' }}</td>
+              <td>{{ item.loss_quantity|decimal(3) if item.loss_quantity is not none else '-' }}</td>
+              <td>{{ item.compensation_amount|decimal }}</td>
+              <td>{{ item.remark or '-' }}</td>
+              {% if current_user.role == ROLE_ADMIN %}<td class="text-end">
+                <form method="post" action="{{ url_for('main.delete_loss', loss_id=item.id) }}" class="d-inline">
+                  <button class="btn btn-sm btn-outline-danger" type="submit">删除</button>
+                </form>
+              </td>{% endif %}
+            </tr>
+            {% else %}
+            <tr><td colspan="{{ 5 if current_user.role == ROLE_ADMIN else 4 }}" class="empty-state-cell">该日期暂无亏损记录。</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
